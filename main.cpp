@@ -33,7 +33,7 @@ void get_my_ip_address(char *ipAddress, const char *interface) {
     FILE *fp;
     char cmd[CMD_MAX_LEN];
 
-    // ifconfig 명령어 실행
+
     sprintf(cmd, "ifconfig %s | grep 'inet' | awk '{print $2}'", interface);
     fp = popen(cmd, "r");
     if (fp == NULL) {
@@ -41,10 +41,8 @@ void get_my_ip_address(char *ipAddress, const char *interface) {
         exit(1);
     }
 
-    // 결과 읽기
     fgets(ipAddress, IP_ADDR_LEN, fp);
 
-    // 개행 문자 제거
     size_t len = strlen(ipAddress);
     if (len > 0 && ipAddress[len - 1] == '\n')
         ipAddress[len - 1] = '\0';
@@ -56,7 +54,6 @@ void get_my_mac_address(char *macAddress, const char *interface) {
     FILE *fp;
     char cmd[CMD_MAX_LEN];
 
-    // ifconfig 명령어 실행
     sprintf(cmd, "ifconfig %s | grep 'ether' | awk '{print $2}'", interface);
     fp = popen(cmd, "r");
     if (fp == NULL) {
@@ -64,10 +61,8 @@ void get_my_mac_address(char *macAddress, const char *interface) {
         exit(1);
     }
 
-    // 결과 읽기
     fgets(macAddress, MAC_ADDR_LEN, fp);
 
-    // 개행 문자 제거
     size_t len = strlen(macAddress);
     if (len > 0 && macAddress[len - 1] == '\n')
         macAddress[len - 1] = '\0';
