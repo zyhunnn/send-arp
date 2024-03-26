@@ -29,9 +29,10 @@ void usage() {
     printf("sample: send-arp-test wlan0\n");
 }
 
-void get_my_ip_address(char *ipAddress, const char *interface) {
+Ip get_my_ip_address(const char *interface) {
     FILE *fp;
     char cmd[CMD_MAX_LEN];
+    char buf[IP_ADDR_LEN];
 
 
     sprintf(cmd, "ifconfig %s | grep 'inet' | awk '{print $2}'", interface);
@@ -41,18 +42,20 @@ void get_my_ip_address(char *ipAddress, const char *interface) {
         exit(1);
     }
 
-    fgets(ipAddress, IP_ADDR_LEN, fp);
+    fgets(buf, IP_ADDR_LEN, fp);
 
-    size_t len = strlen(ipAddress);
-    if (len > 0 && ipAddress[len - 1] == '\n')
-        ipAddress[len - 1] = '\0';
+    size_t len = strlen(buf);
+    if (len > 0 && buf[len - 1] == '\n')
+        buf[len - 1] = '\0';
 
     pclose(fp);
+    return Ip(buf);
 }
 
-void get_my_mac_address(char *macAddress, const char *interface) {
+Mac get_my_mac_address(const char *interface) {
     FILE *fp;
     char cmd[CMD_MAX_LEN];
+    char buf[MAC_ADDR_LEN];
 
     sprintf(cmd, "ifconfig %s | grep 'ether' | awk '{print $2}'", interface);
     fp = popen(cmd, "r");
@@ -61,13 +64,14 @@ void get_my_mac_address(char *macAddress, const char *interface) {
         exit(1);
     }
 
-    fgets(macAddress, MAC_ADDR_LEN, fp);
+    fgets(buf, MAC_ADDR_LEN, fp);
 
-    size_t len = strlen(macAddress);
-    if (len > 0 && macAddress[len - 1] == '\n')
-        macAddress[len - 1] = '\0';
+    size_t len = strlen(buf);
+    if (len > 0 && buf[len - 1] == '\n')
+        buf[len - 1] = '\0';
 
     pclose(fp);
+    return Mac(buf);
 }
 
 
@@ -75,7 +79,7 @@ bool getMacAddress(pcap_t* handle, const char* dev, const Ip& my_ip, Mac& my_mac
     EthArpPacket packet;
 
     packet.eth_.dmac_ = Mac("FF:FF:FF:FF:FF:FF");
-    packet.eth_.smac_ = Mac(my_mac);
+    packet.eth_.smac_ = my_mac;
     packet.eth_.type_ = htons(EthHdr::Arp);
 
     packet.arp_.hrd_ = htons(ArpHdr::ETHER);
@@ -83,7 +87,7 @@ bool getMacAddress(pcap_t* handle, const char* dev, const Ip& my_ip, Mac& my_mac
     packet.arp_.hln_ = Mac::SIZE;
     packet.arp_.pln_ = Ip::SIZE;
     packet.arp_.op_ = htons(ArpHdr::Request);
-    packet.arp_.smac_ = Mac(my_mac); // fill in with my MAC address later
+    packet.arp_.smac_ = my_mac; // fill in with my MAC address later
     packet.arp_.sip_ = htonl(my_ip);
     packet.arp_.tmac_ = Mac("00:00:00:00:00:00");
     packet.arp_.tip_ = htonl(sender_ip);
@@ -150,14 +154,8 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    char MY_ipAddress[IP_ADDR_LEN];
-    char MY_macAddress[MAC_ADDR_LEN];
-
-    get_my_ip_address(MY_ipAddress, argv[1]);
-    get_my_mac_address(MY_macAddress, argv[1]);
-
-    Ip my_ip(MY_ipAddress);
-    Mac my_mac(MY_macAddress);
+    Ip my_ip = get_my_ip_address(argv[1]);
+    Mac my_mac = get_my_mac_address(argv[1]);
 
     char* dev = argv[1];
 
